@@ -1,0 +1,99 @@
+# Local-only stack for exercising the real app/api and app/web Docker images
+# against emulated AWS. Nothing here is used by, or represents, the actual AWS
+# deployment (ECS/Terraform/etc. — that's tracked separately). This exists so
+# the app can be smoke-tested end to end with nothing but `docker compose up`.
+#
+# Usage:
+#   cd app
+#   docker compose up --build
+#   open http://localhost:8081
+#
+# Teardown (also wipes the LocalStack data volume, i.e. all uploaded files
+# and rows):
+#   docker compose down -v
+
+services:
+  # Emulates S3 + DynamoDB in one container. The init script under
+  # local/localstack-init/ runs automatically on startup and creates the
+  # bucket and three tables — no manual setup step required.
+  localstack:
+    image: localstack/localstack:3.8
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3,dynamodb
+      DEFAULT_REGION: ap-south-1
+      # Dummy credentials LocalStack accepts unconditionally. Never used
+      # against real AWS.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    volumes:
+      - ./local/localstack-init:/etc/localstack/init/ready.d:ro
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4566/_localstack/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./api
+    ports:
+      - "8080:8080"
+    # LocalStack runs on the HOST's localhost:4566 (published above). This
+    # container needs "localhost" inside it to mean the host machine so that
+    # the SigV4-signed S3 URLs it generates — which embed whatever hostname
+    # S3_ENDPOINT names — resolve identically for the container (HeadObject,
+    # DeleteObject calls) and for the browser on the host (the actual PUT/GET
+    # of the presigned URL). host-gateway is what makes that true.
+    extra_hosts:
+      - "localhost:host-gateway"
+    environment:
+      NODE_ENV: development
+      PORT: "8080"
+      LOG_LEVEL: debug
+      AWS_REGION: ap-south-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+
+      MEDIA_BUCKET: mediavault-local-media
+      UPLOAD_PREFIX: uploads/
+      S3_ENDPOINT: http://localhost:4566
+      S3_FORCE_PATH_STYLE: "true"
+
+      # No DDB_ROLE_ARN: local testing is single-account, so the default
+      # credential chain (the dummy creds above) is used directly with no
+      # cross-account AssumeRole hop.
+      DDB_ENDPOINT: http://localhost:4566
+      TABLE_ITEMS: mediavault-local-items
+      TABLE_UPLOADS: mediavault-local-uploads
+      TABLE_AUDIT: mediavault-local-audit
+
+      # The web container is a different origin (:8081 vs :8080), so this
+      # mirrors what API Gateway does in the deployed architecture: exactly
+      # one place emits CORS headers.
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: http://localhost:8081
+    depends_on:
+      localstack:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        # Baked in at build time — see app/README.md on why. Points at the
+        # api service's HOST-published port, because the browser runs on the
+        # host, not inside the compose network.
+        VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "8081:8080"
+    environment:
+      API_ORIGIN: http://localhost:8080
+      MEDIA_SRC: http://localhost:4566
+    depends_on:
+      - api
+
+volumes:
+  localstack-data:
