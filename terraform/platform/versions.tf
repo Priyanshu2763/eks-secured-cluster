@@ -1,8 +1,8 @@
 terraform {
   required_providers {
-    aws={
-        source = "hashicorp/aws"
-        version = "~>6.0"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~>6.0"
     }
   }
 
@@ -10,12 +10,13 @@ terraform {
     bucket       = "yayyy-vpc-tfstate-bucket-3sep2004"
     key          = "platform/terraform.tfstate"
     region       = "ap-south-1"
+    profile      = "personal"
     use_lockfile = true
   }
 }
 
 provider "aws" {
-  region = "ap-south-1"
+  region  = "ap-south-1"
   profile = "personal"
 
 }
