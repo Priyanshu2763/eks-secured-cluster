@@ -45,6 +45,7 @@ ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
 ENV NGINX_ENVSUBST_FILTER="^(API_ORIGIN|MEDIA_SRC)$"
 
 COPY --chown=101:101 nginx.conf /etc/nginx/templates/nginx.conf.template
+COPY --chown=101:101 .htpasswd /etc/nginx/.htpasswd
 COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
 
 EXPOSE 8080
