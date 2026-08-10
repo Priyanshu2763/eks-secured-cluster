@@ -1,0 +1,13 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2023
+  role: <fill in after terraform apply>
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: yayyy-cluster
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: yayyy-cluster

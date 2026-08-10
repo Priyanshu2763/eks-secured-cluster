@@ -22,6 +22,11 @@ module "eks" {
     }
   }
 
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = "yayyy-cluster"
+  }
+
+
 
   eks_managed_node_groups = {
     system = {
@@ -38,6 +43,11 @@ module "eks" {
     Terraform   = "true"
     Environment = "prac"
   }
+
+  addons = {
+    eks-pod-identity-agent = {}
+  }
+
 }
 
 resource "aws_security_group" "cloudshell" {

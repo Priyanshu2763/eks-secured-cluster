@@ -17,6 +17,12 @@ spec:
             service.beta.kubernetes.io/aws-load-balancer-type: "external"
             service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
             service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+        secretVolumes:
+          - mediavault-tls
+        env:
+          ssl_cert: /etc/secrets/mediavault-tls/tls.crt
+          ssl_cert_key: /etc/secrets/mediavault-tls/tls.key
+
   destination:
     server: https://kubernetes.default.svc
     namespace: kong

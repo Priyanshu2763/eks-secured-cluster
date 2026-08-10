@@ -13,10 +13,10 @@ module "vpc" {
   }
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = "1"
-    "karpenter.sh/discovery"          = "yayyy-vpc" # match your cluster name later
+    "karpenter.sh/discovery"          = "yayyy-cluster"
   }
   tags = {
-    "kubernetes.io/cluster/yayyy-vpc" = "shared" # this one goes on everything
+    "kubernetes.io/cluster/yayyy-cluster" = "shared"
     Terraform                         = "true"
     Environment                       = "prac"
   }

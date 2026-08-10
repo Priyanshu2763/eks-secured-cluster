@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mediavault-tls
+  namespace: kong
+spec:
+  secretName: mediavault-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - mediavault.priyanshugupta.online
