@@ -18,12 +18,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "media" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "media" {
-  bucket = aws_s3_bucket.media
+  bucket = aws_s3_bucket.media.id
   cors_rule {
-    allowed_methods = ["PUT","GET","HEAD"]
+    allowed_methods = ["PUT", "GET", "HEAD"]
     allowed_origins = ["https://mediavault.priyanshugupta.online"]
     allowed_headers = ["*"]
-    expose_headers = ["Etag"]
+    expose_headers  = ["Etag"]
     max_age_seconds = 300
   }
 }
@@ -31,13 +31,13 @@ resource "aws_s3_bucket_cors_configuration" "media" {
 resource "aws_s3_bucket_lifecycle_configuration" "media" {
   bucket = aws_s3_bucket.media.id
   rule {
-    id = "expire-uploads"
+    id     = "expire-uploads"
     status = "Enabled"
-    filter {prefix="uploads/"}
-    expiration {days=30}
+    filter { prefix = "uploads/" }
+    expiration { days = 30 }
   }
   rule {
-    id = "abort-incomplete-multipart"
+    id     = "abort-incomplete-multipart"
     status = "Enabled"
     filter {}
     abort_incomplete_multipart_upload {
@@ -46,7 +46,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
   }
 
   rule {
-    id = "expire-noncurrent-versions"
+    id     = "expire-noncurrent-versions"
     status = "Enabled"
     filter {}
     noncurrent_version_expiration {

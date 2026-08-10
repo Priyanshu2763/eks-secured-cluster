@@ -99,9 +99,17 @@ Running log of what's been built, why, and what each tool actually does. Updated
 - Config: `gitops/platform/cert-manager-cofig.yaml` (Application, `sync-wave: "1"`, points at a path in our own repo rather than a Helm chart — source type #2) → `gitops/platform/cert-manager-resources/cluster-issuer.yaml` (the actual `ClusterIssuer`, `dns01.route53` solver, scoped to our one hosted zone). No AWS credentials anywhere in it — picks up Route53 access automatically via its pod's IRSA role, same mechanism as everything else.
 - All four pieces written and valid: `root-app.yaml`, `cert-manager.yaml`, `cert-manager-cofig.yaml`, `cluster-issuer.yaml`.
 
+## Bootstrap: media bucket, ECR, DynamoDB
+
+- **`s3-media.tf`** — the actual media upload bucket. Same 4-part security baseline as the state bucket (BPA, SSE-S3, versioning, TLS-only policy), plus two things unique to it: CORS (needed because the API hands the *browser* a presigned PUT URL — the browser uploads directly to S3, so the bucket itself must allow that cross-origin request) and a lifecycle policy (expire `uploads/` after 30 days, abort incomplete multipart uploads after 7 days, expire noncurrent versions after 7 days — without this, versioning alone means every overwritten file's old copies bill forever).
+- **`ecr.tf`** — two repos (`mediavault-api`, `mediavault-web`) to hold this app's Docker images. `image_tag_mutability = "IMMUTABLE"` means once a tag like `:v1.2.3` is pushed, it can never be silently re-pointed at different bytes — real supply-chain protection. Lifecycle policy keeps only the last 10 images per repo.
+- **`dynamodb.tf`** — three tables matching the app's actual code (`app/local/localstack-init/01-create-resources.sh` was the source of truth, not a guess): `items` (media catalog, 2 GSIs for feed/type queries), `uploads` (tracks in-progress uploads, self-expires via TTL on `expiresAt`), `audit` (event log, self-expires via TTL on `ttl`). All `PAY_PER_REQUEST` (on-demand billing, no capacity planning needed).
+- **Lesson learned**: DynamoDB `attribute` blocks are only needed for fields used as a *key* somewhere (table or GSI) — not every field the app stores. DynamoDB itself is schemaless beyond its keys.
+- **Lesson learned**: a GSI's `hash_key` and `range_key` must be two *different* attributes — copy-paste between the two GSI blocks left both pointing at the same attribute twice, a real bug that would have made the GSIs meaningless.
+- **Lesson learned**: watch for self-referencing copy-paste bugs — `aws_ecr_lifecycle_policy.web` referenced *itself* instead of `aws_ecr_repository.web` after being duplicated from the `api` block.
+
 ## Still queued / not started
 
-- **`bootstrap/` stubs still empty**: `ecr.tf`, `dynamodb.tf`, `budget.tf`, `s3-media.tf` — media upload bucket goes in `s3-media.tf`, deferred since it has zero dependency on the rest of the stack.
 - **AWS Client VPN** — deferred to the very end, applied last.
 
 ## App-side (separate from the infra track)
